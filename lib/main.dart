@@ -79,9 +79,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> loadCSV() async{
     final rawData = await rootBundle.loadString('assets/inoutdata.csv');
-    final csvData = CsvToListConverter().convert(rawData);
+    final csvData = CsvToListConverter().convert(rawData, eol: "\n");
+    print(csvData);
     setState(() {
       inOut = csvData.skip(1).map((row) => row[1].toString()).toList();
+      print(inOut);
     });
   }
 
@@ -282,7 +284,7 @@ final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
                           fit: BoxFit.cover,
                           child: SizedBox(
 
-                              height: MediaQuery.sizeOf(context).height ?? 0,
+                              height: MediaQuery.sizeOf(context).height ,
                               child: Chewie(controller: chewieController)))),
 
           ),
@@ -309,7 +311,7 @@ final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
                       )
                   ),
                    Center(
-                    child: inOut.isEmpty ? CircularProgressIndicator() :
+                    child: inOut.isEmpty ? const CircularProgressIndicator() :
                         Text(inOut[currIndex],style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(inOut[currIndex])))
                     // Text(values[currentIndex], style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(values[currentIndex])),),
                   ),
