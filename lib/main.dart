@@ -99,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
     loadCSV();
     // startTimer();
     inOutCountTimer();
-    dateTimeStream = Stream.periodic(const Duration(milliseconds: 1), (_){
+    dateTimeStream = Stream.periodic(const Duration(seconds: 1), (_){
       return DateTime.now();
     });
     currentTime = DateTime.now();
