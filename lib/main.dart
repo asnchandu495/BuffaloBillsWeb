@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:chewie/chewie.dart';
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -41,6 +42,11 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  FToast? fToast;
+  List<String> inOut = [];
+  int currIndex = 0;
+  late Timer inOutTimer;
+
   final List<String> values = ['50', '58', '62',  '72', '99',  '103', '52', '57', '65',  '84', '99','107', '57', '62', '69',  '78', '96',  '105',
     '51', '58', '68',  '80', '96',  '100', '40', '54', '66',  '77', '99',  '102', '45', '52', '68',  '84', '91',  '110', ];
 
@@ -71,6 +77,14 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  Future<void> loadCSV() async{
+    final rawData = await rootBundle.loadString('assets/inoutdata.csv');
+    final csvData = CsvToListConverter().convert(rawData);
+    setState(() {
+      inOut = csvData.skip(1).map((row) => row[1].toString()).toList();
+    });
+  }
+
 
 
 
@@ -78,7 +92,11 @@ class _MyHomePageState extends State<MyHomePage> {
 @override
   void initState() {
     super.initState();
-    startTimer();
+    fToast = FToast();
+    fToast?.init(context);
+    loadCSV();
+    // startTimer();
+    inOutCountTimer();
     dateTimeStream = Stream.periodic(const Duration(milliseconds: 1), (_){
       return DateTime.now();
     });
@@ -96,14 +114,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
     videoPlayerController = VideoPlayerController.asset('assets/video.mp4');
     // ..initialize().then((_){
+    //
     //   setState(() {
     //     WidgetsBinding.instance.addPostFrameCallback((_) {
-    //  videoPlayerController.setLooping(true);
-    //  videoPlayerController.play();
+    //       videoPlayerController.setLooping(true);
+    //       videoPlayerController.play();
     //     });
     //   });
     //
     // });
+    videoPlayerController.setVolume(0.0);
     chewieController = ChewieController(
         videoPlayerController: videoPlayerController,
       aspectRatio: 16/9,
@@ -112,24 +132,61 @@ class _MyHomePageState extends State<MyHomePage> {
       looping: true,
       allowFullScreen: false,
 
-    );
 
+    );
+    chewieController.setVolume(0.0);
   }
 
-  void startTimer(){
-    timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+  // void startTimer(){
+  //   timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+  //     setState(() {
+  //       currentIndex = (currentIndex +1 ) % values.length;
+  //       checkAndShowToast(values[currentIndex]);
+  //       if(int.tryParse(values[currentIndex])! >= 100){
+  //       // makeApiCall();
+  //         apiCall();
+  //       }
+  //     });
+  //   });
+  // }
+
+  void inOutCountTimer(){
+    inOutTimer = Timer.periodic(Duration(seconds: 3), (timer) {
       setState(() {
-        currentIndex = (currentIndex +1 ) % values.length;
-        checkAndShowToast(values[currentIndex]);
-        if(int.tryParse(values[currentIndex])! >= 100){
-        makeApiCall();
+        currIndex = (currIndex +1 ) % inOut.length;
+        showCustomToast(inOut[currIndex]);
+        if(int.tryParse(inOut[currIndex])! >= 100){
+          // makeApiCall();
+          apiCall();
         }
       });
     });
   }
   
-  Future<void> makeApiCall() async {
-    final url = Uri.parse("https://jsonplaceholder.typicode.com/posts");
+  // Future<void> makeApiCall() async {
+  //   final url = Uri.parse("https://jsonplaceholder.typicode.com/posts");
+  //   final response = await http.get(url);
+  //   if(response.statusCode == 200){
+  //     print("API call success");
+  //
+  //
+  //   } else {
+  //     print("API call Failed");
+  //   }
+  // }
+
+  Future<void> apiCall() async{
+    final Uri url = Uri(
+      scheme: 'https',
+      host: 'jsonplaceholder.typicode.com',
+      path: '/posts',
+      queryParameters: {
+        'token': '',
+        'title': '',
+        'body':'',
+      }
+    );
+    print(url);
     final response = await http.get(url);
     if(response.statusCode == 200){
       print("API call success");
@@ -140,18 +197,53 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void checkAndShowToast(String value){
+  // void checkAndShowToast(String value){
+  //   int intValue = int.tryParse(value) ?? 0;
+  //   if(intValue >= 100) {
+  //    Fluttertoast.showToast(
+  //        msg: 'Queue reached Maximum limited ',
+  //    toastLength: Toast.LENGTH_LONG,
+  //    gravity: ToastGravity.BOTTOM,
+  //    textColor: Colors.white,
+  //    backgroundColor: Colors.red,
+  //    webPosition: 'center',
+  //    webBgColor: '#0000008A',
+  //    fontSize: 16.0
+  //    );
+  //
+  //   }
+  // }
+
+  showCustomToast(String value) {
     int intValue = int.tryParse(value) ?? 0;
     if(intValue >= 100) {
-     Fluttertoast.showToast(msg: 'Gate 4 reached limited people',
-     toastLength: Toast.LENGTH_LONG,
-     gravity: ToastGravity.BOTTOM,
-     textColor: Colors.white,
-     backgroundColor: Colors.red,
-     webPosition: 'center',
-     webBgColor: '#FF0000',
-     fontSize: 16.0);
+      Widget toast = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25.0),
+          color: Colors.black87,
+        ),
+        child: const Text(
+          "Queue reached Maximum limit.",
+          style: TextStyle(color: Colors.white),
+        ),
+      );
 
+      fToast?.showToast(
+        child: toast,
+        toastDuration: const Duration(seconds: 4),
+
+          positionedToastBuilder: (context, child) {
+
+            return Positioned(
+              top: MediaQuery.of(context).size.height-(MediaQuery.of(context).size.height/8),
+              left: MediaQuery.of(context).size.width-(MediaQuery.of(context).size.width/3),
+              child: child,
+
+            );
+          }
+
+      );
     }
   }
   
@@ -182,7 +274,17 @@ final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
 
           Expanded(
        flex: 1,
-              child: Chewie(controller: chewieController)
+
+              child:
+                  SizedBox.expand(
+
+                      child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: SizedBox(
+
+                              height: MediaQuery.sizeOf(context).height ?? 0,
+                              child: Chewie(controller: chewieController)))),
+
           ),
           Expanded(
             flex: 1,
@@ -207,7 +309,9 @@ final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
                       )
                   ),
                    Center(
-                    child: Text(values[currentIndex], style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(values[currentIndex])),),
+                    child: inOut.isEmpty ? CircularProgressIndicator() :
+                        Text(inOut[currIndex],style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(inOut[currIndex])))
+                    // Text(values[currentIndex], style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(values[currentIndex])),),
                   ),
                    Expanded(
                       child:  Column(
@@ -239,6 +343,8 @@ final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
     dateTimeStream.drain();
     timer.cancel();
     Fluttertoast.cancel();
+    fToast?.removeCustomToast();
+    inOutTimer.cancel();
     super.dispose();
   }
 }
