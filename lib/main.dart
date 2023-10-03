@@ -21,6 +21,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+
     return MaterialApp(
       title: 'Flutter Demo',
       debugShowCheckedModeBanner: false,
@@ -46,6 +47,8 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> inOut = [];
   int currIndex = 0;
   late Timer inOutTimer;
+    int sum = 0;
+
 
   final List<String> values = ['50', '58', '62',  '72', '99',  '103', '52', '57', '65',  '84', '99','107', '57', '62', '69',  '78', '96',  '105',
     '51', '58', '68',  '80', '96',  '100', '40', '54', '66',  '77', '99',  '102', '45', '52', '68',  '84', '91',  '110', ];
@@ -79,7 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> loadCSV() async{
     final rawData = await rootBundle.loadString('assets/inoutdata.csv');
-    final csvData = CsvToListConverter().convert(rawData, eol: "\n");
+    final csvData = const CsvToListConverter().convert(rawData, eol: "\n");
     print(csvData);
     setState(() {
       inOut = csvData.skip(1).map((row) => row[1].toString()).toList();
@@ -91,12 +94,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
 
 
+
+
 @override
   void initState() {
     super.initState();
     fToast = FToast();
     fToast?.init(context);
     loadCSV();
+
     // startTimer();
     inOutCountTimer();
     dateTimeStream = Stream.periodic(const Duration(seconds: 1), (_){
@@ -111,6 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     setState(() {
       readJson();
+
     });
 
 
@@ -151,18 +158,35 @@ class _MyHomePageState extends State<MyHomePage> {
   //     });
   //   });
   // }
+  int addSum(value){
+    if(value<inOut.length){
+      setState(() {
+        sum += int.tryParse(inOut[value-1])! ;
+        value = value+1;
+        // print(value);
+      });
+    }else{
+      setState(() {
+        sum=0;
+      });
+    }
+    return sum;
+  }
 
   void inOutCountTimer(){
     inOutTimer = Timer.periodic(Duration(seconds: 3), (timer) {
       setState(() {
         currIndex = (currIndex +1 ) % inOut.length;
-        showCustomToast(inOut[currIndex]);
+        addSum(currIndex);
+        showCustomToast(context,inOut[currIndex], );
         if(int.tryParse(inOut[currIndex])! >= 100){
           // makeApiCall();
           apiCall();
         }
       });
     });
+
+
   }
   
   // Future<void> makeApiCall() async {
@@ -216,7 +240,13 @@ class _MyHomePageState extends State<MyHomePage> {
   //   }
   // }
 
-  showCustomToast(String value) {
+  showCustomToast(BuildContext context,String value) {
+    final width = MediaQuery.of(context).size.width;
+    final height = MediaQuery.of(context).size.height;
+    final top = height * 0.9;
+    final left = width * (width > 850 ? 0.70 : 0.25);
+    final gravity = width < 850 ? ToastGravity.BOTTOM : null;
+
     int intValue = int.tryParse(value) ?? 0;
     if(intValue >= 100) {
       Widget toast = Container(
@@ -234,12 +264,12 @@ class _MyHomePageState extends State<MyHomePage> {
       fToast?.showToast(
         child: toast,
         toastDuration: const Duration(seconds: 4),
-
+         gravity: gravity,
           positionedToastBuilder: (context, child) {
 
             return Positioned(
-              top: MediaQuery.of(context).size.height-(MediaQuery.of(context).size.height/8),
-              left: MediaQuery.of(context).size.width-(MediaQuery.of(context).size.width/3),
+              top: top,
+              left: left,
               child: child,
 
             );
@@ -264,20 +294,21 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
 final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
+final isDesktop = MediaQuery.of(context).size.width > 850;
+
     return Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
 
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
 
         title: const Text("Video Analytics"),
       ),
-      body: Row(
+      body: isDesktop ? Row(
         children: <Widget>[
-
           Expanded(
        flex: 1,
-
-              child:
+            child:
                   SizedBox.expand(
 
                       child: FittedBox(
@@ -295,34 +326,31 @@ final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
               padding: const EdgeInsets.only(left: 40, top: 15, bottom: 15),
               child:  Column(
 
-                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Camera Id : AS159BG', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
-                          const Text('Gate no : 4',style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
-                          Text("Time : $formattedTime",style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
-                          const Text('Entries Per Minute : ',style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
-                        ],
-                      )
-                  ),
-                   Center(
-                    child: inOut.isEmpty ? const CircularProgressIndicator() :
-                        Text(inOut[currIndex],style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(inOut[currIndex])))
+                   Column(
+                     mainAxisAlignment: MainAxisAlignment.start,
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       const Text('Camera Id : AS159BG', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
+                       const Text('Gate no : 4',style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
+                       Text("Time : $formattedTime",style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
+                       const Text('Entries Per Minute : ',style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),),
+
+                     ],
+                   ),
+                  Center(
+                      child: inOut.isEmpty ? const CircularProgressIndicator() :
+                      Text(inOut[currIndex],style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(inOut[currIndex])))
                     // Text(values[currentIndex], style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(values[currentIndex])),),
                   ),
-                   Expanded(
-                      child:  Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Total Entries : ${entriesData.totalEntries ?? ""} ',style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),)
-                        ],
-                      )
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Total Entries : $sum ',style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black54),)
+                    ],
                   ),
 
                 ],
@@ -331,7 +359,67 @@ final formattedTime = DateFormat('d.MM.y.hh.mm.ss').format(currentTime);
             ),
           ),
         ],
-      ),
+      ) : Padding(
+        padding: EdgeInsets.only(top: 40),
+        child: Column(
+          
+          children: [
+            Expanded(
+              flex: 1,
+
+              child:
+              SizedBox.expand(
+
+                  child: FittedBox(
+                      fit: BoxFit.cover,
+
+                      child: SizedBox(
+                          width: MediaQuery.sizeOf(context).width ,
+                          child: Chewie(controller: chewieController)))),
+
+            ),
+            Expanded(
+              flex: 2,
+              child: Container(
+                color: Colors.grey[50],
+                padding: const EdgeInsets.only(left: 10, top: 5, bottom: 5),
+                child:  Column(
+
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Camera Id : AS159BG', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black54),),
+                        const Text('Gate no : 4',style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black54),),
+                        Text("Time : $formattedTime",style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black54),),
+                        const Text('Entries Per Minute : ',style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black54),),
+
+                      ],
+                    ),
+                    Center(
+                        child: inOut.isEmpty ? const CircularProgressIndicator() :
+                        Text(inOut[currIndex],style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold, color: getColorForValue(inOut[currIndex])))
+                      // Text(values[currentIndex], style: TextStyle(fontSize: 220, fontWeight: FontWeight.bold, color: getColorForValue(values[currentIndex])),),
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Total Entries : ${sum} ',style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black54),)
+                      ],
+                    ),
+
+                  ],
+
+                ),
+              ),
+            ),
+          ],
+        ),
+      )
       // floatingActionButton: FloatingActionButton(
       //   onPressed: (){},
       //   child: const Icon(Icons.add),
